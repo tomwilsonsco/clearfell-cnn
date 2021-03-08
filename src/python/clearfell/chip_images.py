@@ -5,18 +5,20 @@ from shapely.geometry import Polygon
 import numpy as np
 
 
-def chip_image(input_path, input_file, output_path, pixel_dimensions=28, prefix="chip"):
-    source = f"{input_path}/{input_file}"
-    in_file = gdal.Open(source)
-    img = in_file.GetRasterBand(1)
-    img_x = img.XSize
-    img_y = img.YSize
-    print(img_y)
-    for i in range(0, img_x, pixel_dimensions):
-        for v in range(img_y - pixel_dimensions, 0, -pixel_dimensions):
-            gdal_command = f"gdal_translate -of GTIFF -srcwin {i} {v} {pixel_dimensions} {pixel_dimensions} {source} {output_path}/{prefix}_{int(i/32)}_{img_y - v - 32}_{input_file}"
-            os.system(gdal_command)
-            return None
+def chip_image(input_file_path, output_path, pixel_dimensions=128, offset=64):
+    print(f"chipping {input_file_path} to /{output_path}...")
+    with rio.open(input_file_path) as f:
+        img_x, img_y = f.width, f.height
+    for i in range(0, img_x, offset):
+        for v in range(img_y - pixel_dimensions, 0, -offset):
+            gdal.Translate(
+                destName=f"{output_path}/{input_file_path.split('/')[-1][:-4]}_{i}_{v}.tif",
+                srcDS=input_file_path,
+                srcWin=[i, v, pixel_dimensions, pixel_dimensions],
+                format="GTiff",
+            )
+            # gdal_command = f"gdal_translate -of GTIFF -srcwin {i} {v} {pixel_dimensions} {pixel_dimensions} {input_file_path} {output_path}/{input_file_path.split('/')[-1][:-4]}_{i}_{v}.tif"
+            # os.system(gdal_command)
 
 
 def chip_extent_shp(input_path, output_path, output_file="chip_extents.shp"):
